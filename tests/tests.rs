@@ -308,7 +308,7 @@ fn test_insert_parsear_query_funciona_correctamente() {
     assert_eq!(resultado.unwrap(), resultado_esperado);
 }
 
-//Test 27: Se verifica que se parsee correctamente la query de insert
+//Test 28: Se verifica que se parsee correctamente la query de select
 #[test]
 fn test_select_parsear_query_funciona_correctamente() {
     let query = "SELECT id, nombre, apellido FROM clientes WHERE id >= 3 AND nombre = 'Carlos' ORDER BY apellido"
