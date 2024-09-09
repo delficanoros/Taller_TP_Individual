@@ -130,6 +130,10 @@ impl Insert {
         valores_a_insertar
     }
 
+    /*
+     * Se recibe un string de la query tipo insert y se parsea para obtener el nombre de la tabla,
+     * las columnas y los valores a insertar.
+     */
     pub fn insert_parsear_query(query: &str) -> Result<Self, Box<dyn Error>> {
         let posicion_values = query.find("VALUES").ok_or(Box::new(ErrorPrograma::new(
             ErrorTipo::Syntax,
@@ -175,6 +179,7 @@ fn separar_parentesis(query: &str) -> String {
 }
 
 impl WhereClause {
+    // Crea una Where Clause con los valores ingresados
     pub fn new(valor1: String, comparacion: Comparaciones, valor2: String, es_not: bool) -> Self {
         WhereClause {
             valor1: valor1.to_string(),
@@ -256,6 +261,10 @@ impl WhereClause {
         Ok((where_clauses, logical_operators))
     }
 
+    /*
+     * Se recibe un string que contiene únicamente la where clause y se separa en valores (tipo columna y string) y comparaciones
+     * Devuelve la where clause y los operadores lógicos que se encuentren en la query que pueden ser AND u OR.
+     */
     pub fn clasificar_where_clause(
         resto: &str,
     ) -> Result<(Vec<WhereClause>, Vec<LogicalOperators>), Box<dyn Error>> {
@@ -277,6 +286,9 @@ impl WhereClause {
 }
 
 impl OrderByClause {
+    /*
+     * Crea una instancia con los valores ingresados
+     */
     pub fn new(columna: &str, orden: Order) -> Self {
         OrderByClause {
             columna: columna.to_string(),
@@ -284,6 +296,10 @@ impl OrderByClause {
         }
     }
 
+    /*
+     * Se recibe un string que contiene únicamente de la order by clause y se separa en columnas y
+     * orden que puede ser Ascendente o Descendente.
+     */
     pub fn clasificar_order_by_clause(resto: &str) -> Result<Vec<OrderByClause>, Box<dyn Error>> {
         let posicion_order_by = resto.find("ORDER BY").ok_or(Box::new(ErrorPrograma::new(
             ErrorTipo::Syntax,
@@ -314,6 +330,9 @@ impl OrderByClause {
 }
 
 impl Select {
+    /*
+     * Crea una instancia del select con los valores ingresados
+     */
     pub fn new(
         columnas: Vec<String>,
         tabla: String,
@@ -330,6 +349,10 @@ impl Select {
         }
     }
 
+    /*
+     * Se recibe un string de la query tipo select y se parsea para obtener las columnas, la tabla, las where clauses y los order by clauses.
+     * Se llama a las respectivas funciones que parsean las where y order by clauses a partir de un string.
+     */
     pub fn obtener_campos(query: &str, posicion_from: usize) -> ResultadoClausulas {
         let query_limpia = query.trim_end_matches(';');
         let resto = query_limpia[posicion_from..].trim();
@@ -362,6 +385,9 @@ impl Select {
         ))
     }
 
+    /*
+     * Se parsea la query tipo select a partir del string recibido y se crea una instancia de Select.
+     */
     pub fn select_parsear_query(query: &str) -> Result<Self, Box<dyn Error>> {
         let posicion_from = query.find("FROM").ok_or(Box::new(ErrorPrograma::new(
             ErrorTipo::Syntax,
@@ -388,6 +414,9 @@ impl Select {
 }
 
 impl Update {
+    /*
+     * Se crea una instancia del tipo update con los valores ingresados
+     */
     pub fn new(
         tabla: &str,
         set: &str,
@@ -402,6 +431,9 @@ impl Update {
         }
     }
 
+    /*
+     * Se parsea la query tipo update a partir del string recibido y se crea una instancia de update.
+     */
     pub fn update_parsear_query(query: &str) -> Result<Self, Box<dyn Error>> {
         let posicion_set = query.find("SET").ok_or(Box::new(ErrorPrograma::new(
             ErrorTipo::Syntax,
@@ -433,6 +465,9 @@ impl Update {
 }
 
 impl Delete {
+    /*
+     * Se crea una instancia del tipo delete con los valores ingresados
+     */
     pub fn new(
         tabla: &str,
         where_clauses: Option<Vec<WhereClause>>,
@@ -487,6 +522,10 @@ fn identificar_tipo(query: &str) -> QueryType {
     }
 }
 
+/*
+ * Dependiendo de la query, se identifica que tipo es, y se llama a la función correspondiente para parsearla, y luego
+ * se aplica la query a la tabla correspondiente.
+ */
 pub fn analisar_query(ruta: &String, query: &str) -> Result<(), Box<dyn Error>> {
     match identificar_tipo(query) {
         QueryType::Insert => {

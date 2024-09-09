@@ -172,6 +172,12 @@ fn seleccionar_y_escribir_columnas_pedidas(
     Ok(())
 }
 
+/*
+ * Se recibe la ruta del archivo y la estructura de la consulta SELECT.
+ * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
+ * en caso de que sí se guarda esa línea y luego se las ordena dependiendo lo pedido en la consulta.
+ * Finalmente se seleccionan las columnas pedidas y se imprimen.
+*/
 pub fn aplicar_select(ruta: &String, select: &Select) -> Result<(), Box<dyn Error>> {
     let (lineas, columnas_csv) = abrir_archivo(ruta)?;
     if select.columnas.contains(&"*".to_string()) && select.columnas.len() > 1 {
@@ -382,6 +388,12 @@ fn actualizar_valores_fila(
     Ok(valores)
 }
 
+/*
+ * Se recibe la ruta del archivo y la estructura de la consulta UPDATE.
+ * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
+ * en caso de que sí, se actualizan los valores de la fila y se escribe en un archivo temporal.
+ * Luego se renombra el archivo temporal al archivo original.
+*/
 pub fn aplicar_update(ruta: &String, update: &Update) -> Result<(), Box<dyn Error>> {
     let (lineas, columnas_csv) = abrir_archivo(ruta)?;
     if update.where_clauses.is_some() {
@@ -414,6 +426,11 @@ pub fn aplicar_update(ruta: &String, update: &Update) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
+/*
+ * Se recibe la ruta del archivo y la estructura de la consulta DELETE.
+ * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
+ * en caso de que sí, se elimina esa línea del archivo.
+*/
 pub fn aplicar_delete(ruta: &String, delete: &Delete) -> Result<(), Box<dyn Error>> {
     let (lineas, columnas_csv) = abrir_archivo(ruta)?;
     if delete.where_clauses.is_some() {
@@ -477,6 +494,11 @@ fn escribir_linea(
     Ok(())
 }
 
+/*
+ * Se recibe la ruta del archivo, el nombre de las columnas donde se insertan valores y los valores a insertar
+ * Se abre el archivo y se escriben los valores en el archivo csv en caso de que las columnas pedidas
+ * coincidan con las columnas del archivo.
+*/
 pub fn aplicar_insert(
     ruta: &String,
     nombre_columnas_insertar: &str,
