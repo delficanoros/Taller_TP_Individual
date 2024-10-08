@@ -51,7 +51,7 @@ pub struct Delete {
 #[derive(Debug)]
 pub struct WhereClause {
     pub valor1: String,
-    pub comparacion: Comparaciones,
+    pub comparacion: Comparacion,
     pub valor2: String,
     pub es_not: bool,
 }
@@ -69,7 +69,7 @@ pub enum LogicalOperators {
 }
 
 #[derive(Debug)]
-pub enum Comparaciones {
+pub enum Comparacion {
     Mayor,
     Menor,
     Igual,
@@ -83,16 +83,6 @@ pub enum Order {
     Asc,
     Desc,
 }
-
-type ResultadoClausulas = Result<
-    (
-        String,
-        Vec<WhereClause>,
-        Option<Vec<OrderByClause>>,
-        Vec<LogicalOperators>,
-    ),
-    Box<dyn Error>,
->;
 
 impl Insert {
     pub fn new(tabla: &str, columnas: &str, values: Vec<String>) -> Self {
@@ -180,7 +170,7 @@ fn separar_parentesis(query: &str) -> String {
 
 impl WhereClause {
     // Crea una Where Clause con los valores ingresados
-    pub fn new(valor1: String, comparacion: Comparaciones, valor2: String, es_not: bool) -> Self {
+    pub fn new(valor1: String, comparacion: Comparacion, valor2: String, es_not: bool) -> Self {
         WhereClause {
             valor1: valor1.to_string(),
             comparacion,
@@ -190,7 +180,7 @@ impl WhereClause {
     }
     fn clasificar_valores_clause(
         iter: &mut Peekable<SplitWhitespace>,
-    ) -> Result<(String, Comparaciones, String), Box<dyn Error>> {
+    ) -> Result<(String, Comparacion, String), Box<dyn Error>> {
         let valor1 = iter.next().ok_or(Box::new(ErrorPrograma::new(
             ErrorTipo::Syntax,
             "No se encontró un valor en la cláusula WHERE, recuerde que la clause debe ser \"valor1 comparacion valor2\".",
@@ -200,12 +190,12 @@ impl WhereClause {
             ErrorTipo::Syntax,
             "No se encontró una comparación en la cláusula WHERE, recuerde que la clause debe ser \"valor1 comparacion valor2\".",
         )))? {
-            ">" => Comparaciones::Mayor,
-            "<" => Comparaciones::Menor,
-            "=" => Comparaciones::Igual,
-            ">=" => Comparaciones::MayorIgual,
-            "<=" => Comparaciones::MenorIgual,
-            "!=" => Comparaciones::Diferente,
+            ">" => Comparacion::Mayor,
+            "<" => Comparacion::Menor,
+            "=" => Comparacion::Igual,
+            ">=" => Comparacion::MayorIgual,
+            "<=" => Comparacion::MenorIgual,
+            "!=" => Comparacion::Diferente,
             _ => return Err(Box::new(ErrorPrograma::new(
                 ErrorTipo::Syntax,
                 "El tipo de comparación ingresado no es válido, recuerde que estos pueden ser: =, !=, <, >, <= o >=.",
@@ -262,7 +252,7 @@ impl WhereClause {
     }
 
     /*
-     * Se recibe un string que contiene únicamente la where clause y se separa en valores (tipo columna y string) y comparaciones
+     * Se recibe un string que contiene únicamente la where clause y se separa en valores (tipo columna y string) y Comparacion
      * Devuelve la where clause y los operadores lógicos que se encuentren en la query que pueden ser AND u OR.
      */
     pub fn clasificar_where_clause(
@@ -353,7 +343,11 @@ impl Select {
      * Se recibe un string de la query tipo select y se parsea para obtener las columnas, la tabla, las where clauses y los order by clauses.
      * Se llama a las respectivas funciones que parsean las where y order by clauses a partir de un string.
      */
-    pub fn obtener_campos(query: &str, posicion_from: usize) -> ResultadoClausulas {
+    pub fn crear_select(
+        query: &str,
+        posicion_from: usize,
+        columnas: Vec<String>,
+    ) -> Result<Select, Box<dyn Error>> {
         let query_limpia = query.trim_end_matches(';');
         let resto = query_limpia[posicion_from..].trim();
 
@@ -377,12 +371,15 @@ impl Select {
             None
         };
 
-        Ok((
+        let select = Select::new(
+            columnas,
             tabla.to_string(),
-            where_clauses,
+            Some(where_clauses),
             order_by_clauses,
-            logical_operators,
-        ))
+            Some(logical_operators),
+        );
+
+        Ok(select)
     }
 
     /*
@@ -398,18 +395,7 @@ impl Select {
             .split(',')
             .map(|s| s.trim().to_string())
             .collect();
-
-        let (tabla, where_clauses, order_by_clauses, logical_operators) =
-            Self::obtener_campos(query, posicion_from)?;
-
-        let select = Select::new(
-            columnas,
-            tabla,
-            Some(where_clauses),
-            order_by_clauses,
-            Some(logical_operators),
-        );
-        Ok(select)
+        Self::crear_select(query, posicion_from, columnas)
     }
 }
 
@@ -541,6 +527,7 @@ pub fn analisar_query(ruta: &String, query: &str) -> Result<(), Box<dyn Error>> 
         QueryType::Update => {
             let update = Update::update_parsear_query(query)?;
             let ruta_completa = format!("{}/{}.csv", ruta, update.tabla);
+            println!("{:?}", update);
             aplicar_update(&ruta_completa, &update)
         }
         QueryType::Delete => {

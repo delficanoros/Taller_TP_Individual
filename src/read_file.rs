@@ -1,6 +1,6 @@
 use crate::errors::{ErrorPrograma, ErrorTipo};
 use crate::query_identifier::{
-    Comparaciones, Delete, LogicalOperators, Order, Select, Update, WhereClause,
+    Comparacion, Delete, LogicalOperators, Order, Select, Update, WhereClause,
 };
 use std::error::Error;
 use std::fs::rename;
@@ -283,21 +283,21 @@ fn cumple_condicion(
         obtener_valor(valores, columnas_csv, &where_clause.valor2)?;
     let resultado = if es_numero1 && es_numero2 {
         match where_clause.comparacion {
-            Comparaciones::Igual => valor1_int == valor2_int,
-            Comparaciones::Diferente => valor1_int != valor2_int,
-            Comparaciones::Mayor => valor1_int > valor2_int,
-            Comparaciones::Menor => valor1_int < valor2_int,
-            Comparaciones::MayorIgual => valor1_int >= valor2_int,
-            Comparaciones::MenorIgual => valor1_int <= valor2_int,
+            Comparacion::Igual => valor1_int == valor2_int,
+            Comparacion::Diferente => valor1_int != valor2_int,
+            Comparacion::Mayor => valor1_int > valor2_int,
+            Comparacion::Menor => valor1_int < valor2_int,
+            Comparacion::MayorIgual => valor1_int >= valor2_int,
+            Comparacion::MenorIgual => valor1_int <= valor2_int,
         }
     } else {
         match where_clause.comparacion {
-            Comparaciones::Igual => valor1_string == valor2_string,
-            Comparaciones::Diferente => valor1_string != valor2_string,
-            Comparaciones::Mayor => valor1_string > valor2_string,
-            Comparaciones::Menor => valor1_string < valor2_string,
-            Comparaciones::MayorIgual => valor1_string >= valor2_string,
-            Comparaciones::MenorIgual => valor1_string <= valor2_string,
+            Comparacion::Igual => valor1_string == valor2_string,
+            Comparacion::Diferente => valor1_string != valor2_string,
+            Comparacion::Mayor => valor1_string > valor2_string,
+            Comparacion::Menor => valor1_string < valor2_string,
+            Comparacion::MayorIgual => valor1_string >= valor2_string,
+            Comparacion::MenorIgual => valor1_string <= valor2_string,
         }
     };
     if where_clause.es_not {
@@ -388,18 +388,16 @@ fn actualizar_valores_fila(
     Ok(valores)
 }
 
-/*
- * Se recibe la ruta del archivo y la estructura de la consulta UPDATE.
- * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
- * en caso de que sí, se actualizan los valores de la fila y se escribe en un archivo temporal.
- * Luego se renombra el archivo temporal al archivo original.
-*/
-pub fn aplicar_update(ruta: &String, update: &Update) -> Result<(), Box<dyn Error>> {
+pub fn crear_escribir_archivo_temporal_update(
+    ruta: &String,
+    update: &Update,
+    ruta_temporal: &String,
+) -> Result<(), Box<dyn Error>> {
     let (lineas, columnas_csv) = abrir_archivo(ruta)?;
     if update.where_clauses.is_some() {
         verificar_existen_columnas_where_clause(&update.where_clauses, &columnas_csv)?;
     }
-    let archivo_temporal = File::create("datos/temporal.csv")?;
+    let archivo_temporal = File::create(ruta_temporal)?;
     let mut temporal_writer = BufWriter::new(archivo_temporal);
     writeln!(temporal_writer, "{}", columnas_csv.join(","))?;
 
@@ -421,17 +419,28 @@ pub fn aplicar_update(ruta: &String, update: &Update) -> Result<(), Box<dyn Erro
             writeln!(temporal_writer, "{}", linea)?;
         }
     }
-    rename("datos/temporal.csv", ruta)?;
+    rename(ruta_temporal, ruta)?;
     drop(temporal_writer);
     Ok(())
 }
 
 /*
- * Se recibe la ruta del archivo y la estructura de la consulta DELETE.
+ * Se recibe la ruta del archivo y la estructura de la consulta UPDATE.
  * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
- * en caso de que sí, se elimina esa línea del archivo.
+ * en caso de que sí, se actualizan los valores de la fila y se escribe en un archivo temporal.
+ * Luego se renombra el archivo temporal al archivo original.
 */
-pub fn aplicar_delete(ruta: &String, delete: &Delete) -> Result<(), Box<dyn Error>> {
+pub fn aplicar_update(ruta: &String, update: &Update) -> Result<(), Box<dyn Error>> {
+    crear_escribir_archivo_temporal_update(ruta, update, &"datos/temporal.csv".to_string())?;
+    Ok(())
+}
+
+pub fn crear_escribir_archivo_temporal_delete(
+    ruta_temporal: &String,
+    delete: &Delete,
+    ruta: &String,
+) -> Result<(), Box<dyn Error>> {
+    let archivo_temporal = File::create(ruta_temporal)?;
     let (lineas, columnas_csv) = abrir_archivo(ruta)?;
     if delete.where_clauses.is_some() {
         verificar_existen_columnas_where_clause(&delete.where_clauses, &columnas_csv)?;
@@ -441,9 +450,7 @@ pub fn aplicar_delete(ruta: &String, delete: &Delete) -> Result<(), Box<dyn Erro
             "No hay una WHERE clause en la consulta DELETE.",
         )))?
     }
-    let archivo_temporal = File::create("datos/temporal.csv")?;
     let mut temporal_writer = BufWriter::new(archivo_temporal);
-
     writeln!(temporal_writer, "{}", columnas_csv.join(","))?;
 
     for linea in lineas {
@@ -459,10 +466,19 @@ pub fn aplicar_delete(ruta: &String, delete: &Delete) -> Result<(), Box<dyn Erro
         }
     }
 
-    rename("datos/temporal.csv", ruta)?;
+    rename(ruta_temporal, ruta)?;
     temporal_writer.flush()?;
     drop(temporal_writer);
+    Ok(())
+}
 
+/*
+ * Se recibe la ruta del archivo y la estructura de la consulta DELETE.
+ * Se abre el archivo y se lee línea por línea. Se verifica si la linea actual cumple con la condición del where,
+ * en caso de que sí, se elimina esa línea del archivo.
+*/
+pub fn aplicar_delete(ruta: &String, delete: &Delete) -> Result<(), Box<dyn Error>> {
+    crear_escribir_archivo_temporal_delete(&"datos/temporal.csv".to_string(), delete, ruta)?;
     Ok(())
 }
 
